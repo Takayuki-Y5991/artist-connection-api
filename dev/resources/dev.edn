@@ -1,0 +1,9 @@
+{:artist-connections/server
+ {:port 3000
+  :handler #ig/ref :artist-connections/handlers}
+
+ :artist-connections/handlers
+ {:router #ig/ref :artist-connections/router}
+
+ :artist-connections/router
+ {:routes {"health" {:get {:handler :artist-connections.adapter.inbound.handlers.health/check}}}}}

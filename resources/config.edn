@@ -1,0 +1,10 @@
+{:artist-connections/server
+ {:port #profile {:dev 3000
+                  :prod #long #env PORT}
+  :handler #ig/ref :artist-connections/handlers}
+
+ :artist-connections/handlers
+ {:router #ig/ref :artist-connections/router}
+
+ :artist-connections/router
+ {:routes {"health" {:get {:handler :artist-connections.adapter.inbound.handlers.health/check}}}}}
