@@ -15,7 +15,7 @@
 ;; (repl/set-prep!
 ;;  #(config/load-config :dev))
 (repl/set-prep!
- #(config/read-config (io/resource "config.edn")))
+ #(config/read-config (io/resource "config.edn") {:profile :dev}))
 
 (defn reset-all []
   (repl/reset)
