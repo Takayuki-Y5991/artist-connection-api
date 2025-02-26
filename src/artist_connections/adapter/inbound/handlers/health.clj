@@ -3,7 +3,7 @@
   {:added "1.0"}
   (:require [integrant.core :as ig]
             [artist-connections.adapter.inbound.response :refer [ok]]
-            [artist-connections.port.inbound.handlers.health :refer [HealthPort]]))
+            [artist-connections.port.inbound.handlers.health :refer [HealthPort health-check]]))
 
 (defn health-check-handler [_]
   (ok
@@ -16,5 +16,9 @@
   (health-check [_ request]
     (health-check-handler request)))
 
+(defn health-handler [request]
+  (let [handler (->HealthHandler)]
+    (health-check handler request)))
+
 (defmethod ig/init-key :artist-connections.adapter.inbound.handlers.health/check [_ _]
-  (->HealthHandler))
+  health-handler)

@@ -12,6 +12,14 @@
     (assoc handler-config :handler (ig/init-key (:handler handler-config) {}))
     handler-config))
 
+(defn compile-middleware [middleware]
+  (fn [handler]
+    (reduce
+     (fn [handler middleware]
+       (middleware handler))
+     handler
+     (reverse middleware))))
+
 (defmethod ig/init-key :artist-connections/router [_ {:keys [routes]}]
   (ring/router
    (for [[path methods] routes]

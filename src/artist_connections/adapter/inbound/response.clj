@@ -22,10 +22,17 @@
         (response/status status)
         (response/content-type "application/json"))))
 
+(defn map->response [m]
+  (if (contains? m :status)
+    m  ; 既にRingレスポンス
+    (-> m
+        (response/response)
+        (response/status 200)
+        (response/content-type "application/json"))))
+
 
 (defn ok [body]
   (success (->SuccessResponse body)))
 
 (defn error [status message]
   (failure (->ErrorResponse status message)))
-
