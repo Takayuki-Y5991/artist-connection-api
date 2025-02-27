@@ -63,7 +63,6 @@
         :retryable? retryable-error?}))
      params)))
 
-
 (defmethod ig/init-key :artist-connections.adapter.outbound.client.auth-client/auth-client [_ {:keys [base-uri circuit-breaker-opts]}]
   (let [circuit-breaker (create-circuit-breaker
                          (or circuit-breaker-opts {:failure-threshold 5

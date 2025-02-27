@@ -5,7 +5,6 @@
    [artist-connections.macros.railway :refer [failure success]]
    [clojure.test :refer [deftest is testing]]))
 
-
 (deftest retryable-error?-test
   (testing "nil status should be retryable"
     (is (retryable-error? {:details {}})))

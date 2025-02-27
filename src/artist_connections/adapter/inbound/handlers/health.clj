@@ -10,7 +10,6 @@
    {:status "ok"
     :timestamp (str (java.time.Instant/now))}))
 
-
 (defrecord HealthHandler []
   HealthPort
   (health-check [_ request]

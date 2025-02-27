@@ -108,8 +108,6 @@
         (println "EXITING wrap-railway-response - RESPONSE TYPE:" (type response))
         response))))
 
-
-
 (defn debug-response-middleware [handler]
   (fn [request]
     (println "BEFORE HANDLER - REQUEST:" request)

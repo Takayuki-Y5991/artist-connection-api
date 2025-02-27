@@ -30,7 +30,6 @@
         (response/status 200)
         (response/content-type "application/json"))))
 
-
 (defn ok [body]
   (success (->SuccessResponse body)))
 
