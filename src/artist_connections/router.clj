@@ -1,6 +1,5 @@
 (ns artist-connections.router
   (:require
-   [artist-connections.adapter.inbound.middleware :as middleware]
    [integrant.core :as ig]
    [muuntaja.core :as m]
    [reitit.ring :as ring]

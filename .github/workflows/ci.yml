@@ -1,0 +1,124 @@
+name: Clojure CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  lint:
+    name: Lint and Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Clojure Tools
+        uses: DeLaGuardo/setup-clojure@13.1
+        with:
+          cli: latest
+
+      - name: Cache Clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-lint-${{ hashFiles('**/deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-lint-
+
+      - name: Run clj-kondo linter
+        run: clojure -M:clj-kondo --lint src:test
+
+      - name: Run cljfmt check
+        run: clojure -M:cljfmt check
+
+      - name: Run Eastwood static analyzer
+        run: clojure -M:eastwood
+        continue-on-error: true
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Clojure Tools
+        uses: DeLaGuardo/setup-clojure@13.1
+        with:
+          cli: latest
+
+      - name: Cache Clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-security-${{ hashFiles('**/deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-security-
+
+      - name: Run nvd-clojure vulnerability check
+        run: clojure -M:nvd
+        continue-on-error: true
+
+      - name: Generate Dependency Tree
+        run: |
+          mkdir -p target/dependency-reports
+          clojure -Stree > target/dependency-reports/dependency-tree.txt
+
+      - name: Upload Dependency Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reports
+          path: target/dependency-reports
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Clojure Tools
+        uses: DeLaGuardo/setup-clojure@13.1
+        with:
+          cli: latest
+
+      - name: Cache Clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-test-${{ hashFiles('**/deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-test-
+
+      - name: Prepare test environment
+        run: |
+          mkdir -p target/test-reports
+
+      - name: Run tests
+        run: clojure -M:test:test/run --reporter documentation --no-randomize --color
