@@ -30,13 +30,11 @@
   :clj-kondo {:extra-deps {clj-kondo/clj-kondo {:mvn/version "2025.02.20"}}
               :main-opts ["-m" "clj-kondo.main"]}
   ;; detail static analysis
-  :eastwood {:extra-deps {jonase/eastwood {:mvn/version "1.4.3"}}
+  :eastwood {:extra-deps {jonase/eastwood {:mvn/version "1.4.0"}}
              :main-opts ["-m" "eastwood.lint"
-                         "{:source-path [\"src\"] :test-path [\"test\"]}"]}
-  ;; find refactor codes
-  :kibit {:extra-deps {jonase/kibit {:mvn/version "0.1.11"}}
-          :main-opts ["-m" "kibit.driver"]}
-
+                         "{:source-paths [\"src\"] 
+                          :test-paths [\"test\"]
+                          :namespaces [:source-paths]}"]}
   ;; code formatter
   :cljfmt {:extra-deps {cljfmt/cljfmt {:mvn/version "0.9.2"}}
            :main-opts ["-m" "cljfmt.main"]}

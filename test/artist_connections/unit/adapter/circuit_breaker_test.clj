@@ -1,9 +1,8 @@
 (ns artist-connections.unit.adapter.circuit-breaker-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [artist-connections.adapter.outbound.client.circuit-breaker :refer [create-circuit-breaker]]
-            [artist-connections.macros.railway :refer [success failure failure? success?]]
-            [clojure.core.async :refer [<!! timeout]]
-            [clojure.tools.logging :as log]))
+            [artist-connections.macros.railway :refer [success failure failure?]]
+            [clojure.core.async :refer [<!! timeout]]))
 
 (deftest create-circuit-breaker-test
   (testing "Should initially be in closed state and allow calls to pass through"

@@ -1,8 +1,5 @@
 (ns artist-connections.adapter.inbound.middleware
   (:require
-   [artist-connections.adapter.inbound.response :refer [->response
-                                                        map->response
-                                                        ResponseFormatter]]
    [artist-connections.macros.railway :refer [failure? success?]]
    [cheshire.core :as json]
    [ring.util.response :as response]))
@@ -48,13 +45,13 @@
       (println "IN wrap-railway-response - RESULT TYPE:" (type result))
 
       (let [response (cond
-                       ;; Success の場合
-                       (instance? artist_connections.macros.railway.Success result)
+                       (success? result)
                        (let [value (:value result)]
                          (println "PROCESSING Success TYPE. VALUE TYPE:" (type value))
                          (cond
                            ;; SuccessResponse の場合
-                           (instance? artist_connections.adapter.inbound.response.SuccessResponse value)
+                          ;;  (instance? artist_connections.adapter.inbound.response.SuccessResponse value)
+                           (and (map? value) (:body value))
                            (do
                              (println "PROCESSING SuccessResponse")
                              (-> (:body value)
@@ -71,13 +68,11 @@
                                  (response/status 200)
                                  (response/content-type "application/json")))))
 
-                       ;; Failure の場合
-                       (instance? artist_connections.macros.railway.Failure result)
+                       (failure? result)
                        (let [error (:error result)]
                          (println "PROCESSING Failure Type. ERROR TYPE:" (type error))
                          (cond
-                           ;; ErrorResponse の場合
-                           (instance? artist_connections.adapter.inbound.response.ErrorResponse error)
+                           (and (map? error) (:status error) (:message error))
                            (do
                              (println "PROCESSING ErrorResponse")
                              (-> {:error_code (name (:status error))
@@ -122,9 +117,9 @@
       (println "AFTER HANDLER - RESPONSE TYPE:" (type response))
       (println "AFTER HANDLER - RESPONSE:" response)
 
-      ;; レスポンスの :body を修正
       (if (and (map? response)
                (:body response)
-               (instance? artist_connections.adapter.inbound.response.SuccessResponse (:body response)))
-        (update response :body :body)  ;; SuccessResponse の中の :body を取り出す
+               (map? (:body response))
+               (:body (:body response)))
+        (update response :body :body)
         response))))
