@@ -3,8 +3,7 @@
    [artist-connections.adapter.outbound.client.retry :refer [retry
                                                              retryable-error?]]
    [artist-connections.macros.railway :refer [failure success]]
-   [clojure.core.async :as async]
-   [clojure.test :refer :all]))
+   [clojure.test :refer [deftest is testing]]))
 
 
 (deftest retryable-error?-test

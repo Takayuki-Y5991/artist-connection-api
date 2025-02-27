@@ -7,14 +7,14 @@
   [_ _ value]
   (ig/ref value))
 
-(defn- env [val]
-  (System/getenv (name val)))
+;; (defn- env [val]
+;;   (System/getenv (name val)))
 
-(defn- merge-default-readers [readers]
-  (merge
-   {'env env
-    'ig/ref ig/ref}
-   readers))
+;; (defn- merge-default-readers [readers]
+;;   (merge
+;;    {'env env
+;;     'ig/ref ig/ref}
+;;    readers))
 
 (defn read-config
   ([source]
