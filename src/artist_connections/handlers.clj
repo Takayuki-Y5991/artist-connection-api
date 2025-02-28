@@ -12,4 +12,4 @@
       (middleware/wrap-railway-response)
       (middleware/wrap-json-response)
       (middleware/wrap-error-handling)
-      (middleware/debug-response-middleware)))
+      (middleware/debug-middleware)))
