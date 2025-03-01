@@ -142,7 +142,6 @@
         :else
         (process-railway-result result)))))
 
-;; Debug middleware (unchanged)
 (defn debug-response-middleware [handler]
   (fn [request]
     (println "BEFORE HANDLER - REQUEST:" request)
