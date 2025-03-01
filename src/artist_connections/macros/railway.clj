@@ -9,6 +9,8 @@
 ;; operations while handling both the "happy path" and error cases elegantly.
 (defrecord Success [value])
 (defrecord Failure [error])
+(defrecord LazySuccess [thunk])
+(defrecord LazyFailure [thunk])
 
 ;; Creates a Success type containing the provided value
 ;; Used when an operation completes successfully
@@ -22,11 +24,47 @@
 
 ;; Checks if a result is a Success instance
 (defn success? [result]
-  (instance? Success result))
+  (or (instance? Success result)
+      (instance? LazySuccess result)))
 
 ;; Checks if a result is a Failure instance
 (defn failure? [result]
-  (instance? Failure result))
+  (or (instance? Failure result)
+      (instance? LazyFailure result)))
+
+;; creates a lazy success that will evaluate the thunk when needed
+(defn lazy-success [thunk]
+  (->LazySuccess thunk))
+
+;; creates a lazy failure that will evaluate the thunk when needed
+(defn lazy-failure [thunk]
+  (->LazyFailure thunk))
+
+;; Checks if a result is lazy
+(defn lazy? [result]
+  (or (instance? LazySuccess result)
+      (instance? LazyFailure result)))
+
+;; Force evaluation of lazy results
+(defn force-lazy [result]
+  (cond
+    (instance? LazySuccess result) (success ((:thunk result)))
+    (instance? LazyFailure result) (failure ((:thunk result)))
+    :else result))
+
+;; Retrieves the value from a Success or failure
+(defn ->value [result]
+  (cond
+    (instance? Success result) (:value result)
+    (instance? LazySuccess result) ((:thunk result))
+    :else (throw (Exception. "Cannot get value from non-result"))))
+
+;; Retrieves the error from a Failure or LazyFailure
+(defn ->error [result]
+  (cond
+    (instance? Failure result) (:error result)
+    (instance? LazyFailure result) ((:thunk result))
+    :else (throw (Exception. "Cannot get error from non-Failure result"))))
 
 ;; -----------------------------------------------------------------------------
 ;; Core Railway Operations
@@ -38,63 +76,97 @@
   "Thread success value through functions.
      Similar to the -> threading macro, but only applies functions
      if the input is a Success. Otherwise, passes the Failure through unchanged.
+     Handles lazy results by preserving laziness.
 
      Example:
      (|> (success 5) inc double) => (success 12)
-     (|> (failure :error) inc double) => (failure :error)"
+     (|> (failure :error) inc double) => (failure :error)
+     (|> (lazy-success #(expensive-calc)) inc) => (lazy-success #(inc (expensive-calc)))"
   [value & fns]
   `(let [result# ~value]
-     (if (success? result#)
+     (cond
+       (instance? Success result#)
        (success (-> (:value result#)
                     ~@(map list fns)))
-       result#)))
+
+       (instance? LazySuccess result#)
+       (lazy-success #(-> ((:thunk result#))
+                          ~@(map list fns)))
+
+       :else result#)))
 
 (defmacro |-|
   "Thread error value through functions.
    Only applies functions if the input is a Failure. Otherwise,
    passes the Success through unchanged.
+   Handles lazy results by preserving laziness.
 
    Example:
    (|-| (failure {:msg \"Error\"})
         #(assoc % :timestamp \"now\")) => (failure {:msg \"Error\" :timestamp \"now\"})
-   (|-| (success 42) #(assoc % :info \"ignored\")) => (success 42)"
+   (|-| (success 42) #(assoc % :info \"ignored\")) => (success 42)
+   (|-| (lazy-failure #(->error)) add-timestamp) => (lazy-failure #(add-timestamp (->error)))"
   [value & fns]
   `(let [result# ~value]
-     (if (failure? result#)
+     (cond
+       (instance? Failure result#)
        (failure (-> (:error result#)
                     ~@(map list fns)))
-       result#)))
+
+       (instance? LazyFailure result#)
+       (lazy-failure #(-> ((:thunk result#))
+                          ~@(map list fns)))
+
+       :else result#)))
 
 (defmacro >-<
   "Branch processing based on success/failure.
      Takes a result and two functions - one for handling success,
      one for handling failure. This is the terminal operation in a
+     railway chain. Forces evaluation of lazy results.
 
      Example:
      (>-< (success 42)
           #(str \"Success: \" %)
-          #(str \"Error: \" %)) => \"Success: 42\""
+          #(str \"Error: \" %)) => \"Success: 42\"
+     (>-< (lazy-success #(expensive-calc))
+          #(str \"Success: \" %)
+          #(str \"Error: \" %)) => \"Success: [result of expensive-calc]\""
   [value success-fn failure-fn]
-  `(let [result# ~value]
-     (if (success? result#)
-       (~success-fn (:value result#))
-       (~failure-fn (:error result#)))))
+  `(let [result# ~value
+         forced# (force-lazy result#)]
+     (if (success? forced#)
+       (~success-fn (->value forced#))
+       (~failure-fn (->error forced#)))))
 
 (defmacro <|>
   "Try alternative on failure.
      If the value is a Failure, evaluates and returns the alternative.
      Otherwise, returns the original Success unchanged.
      Similar to the 'or' operation in many languages.
+     Preserves laziness for Success results, but forces evaluation of Failure
+     to determine if the alternative should be used.
 
      Example:
      (<|> (failure \"error\") (success 42)) => (success 42)
-     (<|> (success 1) (success 2)) => (success 1)"
-
+     (<|> (success 1) (success 2)) => (success 1)
+     (<|> (lazy-failure #(->error)) (lazy-success #(fallback))) => (lazy-success #(fallback))"
   [value alternative]
   `(let [result# ~value]
-     (if (failure? result#)
+     (cond
+       ;; For immediate failures, use the alternative
+       (instance? Failure result#)
        ~alternative
-       result#)))
+
+       ;; For lazy failures, we need to check if they're actually failures
+       (instance? LazyFailure result#)
+       (let [forced# (force-lazy result#)]
+         (if (failure? forced#)
+           ~alternative
+           forced#))
+
+       ;; For success (lazy or not), keep it unchanged
+       :else result#)))
 
 ;; -----------------------------------------------------------------------------
 ;; Validation Utilities
@@ -150,7 +222,8 @@
   (fn [x]
     (reduce (fn [acc f]
               (if (success? acc)
-                (let [result (try (f (:value acc))
+                (let [forced# (force-lazy acc)
+                      result (try (f (->value forced#))
                                   (catch Exception e
                                     (failure (.getMessage e))))]
                   (cond
@@ -160,6 +233,51 @@
                 acc))
             (success x)
             fs)))
+
+;; -----------------------------------------------------------------------------
+;; Lazy Operations
+;; -----------------------------------------------------------------------------
+;; Functions to support lazy evaluation in railway operations
+
+(defmacro delay-success
+  "Creates a lazy success that will only execute the body when needed.
+   Useful for expensive operations that might not be needed.
+
+   Example:
+   (delay-success (expensive-calculation)) => LazySuccess
+   (|> (delay-success (expensive-calculation)) process-result) => LazySuccess"
+  [& body]
+  `(lazy-success (fn [] ~@body)))
+
+(defmacro delay-railway
+  "Creates a lazy railway result (Success or Failure) based on the
+   evaluation of the body when forced.
+
+   Example:
+   (delay-railway (validate-data data)) => LazySuccess or LazyFailure
+   (|> (delay-railway (db-operation)) process-result) => Preserves laziness"
+  [& body]
+  `(let [thunk# (fn [] ~@body)]
+     (fn []
+       (let [result# (thunk#)]
+         (if (success? result#)
+           (lazy-success #(->value result#))
+           (lazy-failure #(->error result#)))))))
+
+(defmacro |>lazy
+  "Similar to |> but ensures all operations are done lazily,
+   even if the input is not lazy.
+
+   Example:
+   (|>lazy (success 5) expensive-calc format-result) => LazySuccess"
+  [value & fns]
+  `(let [result# ~value
+         lazy-result# (if (lazy? result#)
+                        result#
+                        (if (success? result#)
+                          (lazy-success #(->value result#))
+                          (lazy-failure #(->error result#))))]
+     (|> lazy-result# ~@fns)))
 
 ;; -----------------------------------------------------------------------------
 ;; Railway Combinators
@@ -207,4 +325,3 @@
        (~f x#)
        (catch Exception e#
          (~error-handler e#)))))
-
