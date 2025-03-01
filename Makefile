@@ -1,7 +1,7 @@
 .PHONY: test lint format check all clean
 
 test:
-	clojure -M:test:test/run --reporter documentation --no-randomize --color
+	clear && clojure -M:test:test/run --reporter documentation --no-randomize --color
 
 lint:
 	clojure -M:clj-kondo --lint src:test
