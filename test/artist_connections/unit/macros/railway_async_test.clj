@@ -32,7 +32,7 @@
 ;; -------------------------------------------------------------------------
 
 (deftest alternative-async-test
-  (testing "a/<|> provides alternative on failure asynchronously"
+  (testing "<|> provides alternative on failure asynchronously"
     ;; Set up channels containing success and failure results
     (let [success-ch-1 (go (success 1))
           success-ch-2 (go (success 2))
@@ -53,14 +53,14 @@
       (is (= 2 (:value result2))))))
 
 (deftest thread-success-async-test
-  (testing "a/|> threads success values asynchronously"
+  (testing "|> threads success values asynchronously"
     (let [inc-fn (fn [x] (go (success (inc x))))
           double-fn (fn [x] (go (success (* 2 x))))
           result (<!! (a/|> (go (success 5)) inc-fn double-fn))]
       (is (success? result))
       (is (= 12 (:value result)))))
 
-  (testing "a/|> passes failures through unchanged"
+  (testing "|> passes failures through unchanged"
     (let [inc-fn (fn [x] (go (success (inc x))))
           error {:message "Error"}
           result (<!! (a/|> (go (failure error)) inc-fn))]
@@ -68,7 +68,7 @@
       (is (= error (:error result))))))
 
 (deftest thread-error-async-test
-  (testing "a/|-| threads error values asynchronously"
+  (testing "|-| threads error values asynchronously"
     (let [add-info (fn [e] (go (failure (assoc e :info "Additional info"))))
           add-timestamp (fn [e] (go (failure (assoc e :timestamp "now"))))
           error {:message "Error"}
@@ -77,14 +77,14 @@
       (is (= "Additional info" (get-in result [:error :info])))
       (is (= "now" (get-in result [:error :timestamp])))))
 
-  (testing "a/|-| passes successes through unchanged"
+  (testing "|-| passes successes through unchanged"
     (let [add-info (fn [e] (go (failure (assoc e :info "Additional info"))))
           result (<!! (a/|-| (go (success 42)) add-info))]
       (is (success? result))
       (is (= 42 (:value result))))))
 
 (deftest branch-async-test
-  (testing "a/>-< branches on success asynchronously"
+  (testing ">-< branches on success asynchronously"
     (let [success-fn (fn [v] (go (str "Success: " v)))
           failure-fn (fn [e] (go (str "Failure: " e)))
           result1 (<!! (a/>-< (go (success "good")) success-fn failure-fn))
@@ -93,7 +93,7 @@
       (is (= "Failure: bad" result2)))))
 
 (deftest thread-success-with-channels-test
-  (testing "a/|> handles channels properly"
+  (testing "|> handles channels properly"
     (let [success-ch-1 (go (success 1))
 
           ;; Test with a success channel being threaded through
@@ -128,7 +128,7 @@
       (is (string? (get-in result [:error :details]))))))
 
 (deftest try-railway-async-test
-  (testing "a/!> catches exceptions and returns them as failures asynchronously"
+  (testing "!> catches exceptions and returns them as failures asynchronously"
     (let [result1 (<!! (a/!> (+ 1 2)))
           result2 (<!! (a/!> (throw (Exception. "Test exception"))))]
       (is (success? result1))
@@ -138,7 +138,7 @@
       (is (= "Test exception" (get-in result2 [:error :details]))))))
 
 (deftest chain-async-test
-  (testing "a/|+ chains functions together asynchronously"
+  (testing "|+ chains functions together asynchronously"
     (let [inc-fn (fn [x] (go (success (inc x))))
           double-fn (fn [x] (go (success (* 2 x))))
           fail-fn (fn [_] (go (failure {:message "Failed"})))
@@ -152,7 +152,7 @@
         (is (= {:message "Failed"} (:error failure-result)))))))
 
 (deftest either-async-test
-  (testing "either-a selects function based on predicate asynchronously"
+  (testing "either selects function based on predicate asynchronously"
     (let [even-pred (fn [x] (even? x))
           double (fn [x] (go (* 2 x)))
           triple (fn [x] (go (* 3 x)))
@@ -162,7 +162,7 @@
       (is (= 9 (<!! (choose-fn 3)))))))
 
 (deftest guard-async-test
-  (testing "guard-a creates success for valid conditions asynchronously"
+  (testing "guard creates success for valid conditions asynchronously"
     (let [positive? (fn [x] (> x 0))
           check-positive (a/guard positive? "Value must be positive")]
 
@@ -174,7 +174,7 @@
         (is (= "Value must be positive" (get-in result [:error :error])))))))
 
 (deftest attempt-async-test
-  (testing "attempt-a catches exceptions in async functions"
+  (testing "attempt catches exceptions in async functions"
     (let [;; This function attempts division but wraps it in a go block
           ;; The key issue is that exceptions in go blocks need special handling
           risky-fn (fn [x]
